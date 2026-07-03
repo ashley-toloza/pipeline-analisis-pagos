@@ -1,0 +1,15 @@
+# Configuración del Pipeline Olist
+rutas:
+  pagos: "data/olist_order_payments_dataset.csv"
+  ordenes: "data/olist_orders_dataset.csv"
+  clientes: "data/olist_customers_dataset.csv"
+  
+  # Los 5 Outputs requeridos por la rúbrica del profesor
+  salida_reporte: "output/resumen_ejecutivo.csv"
+  salida_pagos: "output/pagos_por_metodo.csv"
+  salida_estados: "output/rendimiento_por_estado.csv"
+  salida_criticas: "output/ordenes_criticas.csv"
+  base_datos: "output/olist_analytics.db"
+
+apis:
+  mindicador_url: "https://mindicador.cl/api/dolar"
