@@ -17,7 +17,7 @@ MAPEO_ESTADOS = {
 def generar_analisis_pagos(df_payments: pd.DataFrame, df_orders: pd.DataFrame, df_customers: pd.DataFrame, valor_dolar: float, config: dict, base_path: Path):
     """
     Cruza las fuentes de datos, integra conversión por API y genera los 5 outputs
-    (4 CSVs + 1 DB SQLite).
+    (4 CSVs + 1 DB SQLite), utilizando la divisa correcta (BRL) para los montos base.
     """
     logger.info("🧠 Procesando cruces de datos (Merges) y analítica avanzada...")
     
@@ -30,16 +30,16 @@ def generar_analisis_pagos(df_payments: pd.DataFrame, df_orders: pd.DataFrame, d
     
     # --- 3. Generación de las 4 Tablas de Reportes (Outputs) ---
     
-    # Output 1: Resumen Ejecutivo por Estado (Con ambas monedas)
+    # Output 1: Resumen Ejecutivo por Estado (CORREGIDO: USD pasa a BRL)
     resumen_ejecutivo = df_completo.groupby("customer_state").agg(
-        total_ingresos_usd=("payment_value", "sum"),
+        total_ingresos_brl=("payment_value", "sum"),
         total_ingresos_clp=("payment_value_clp", "sum"),
         transacciones=("order_id", "count")
     ).reset_index()
     
-    # Output 2: Métricas por tipo de Pago
+    # Output 2: Métricas por tipo de Pago (CORREGIDO: USD pasa a BRL)
     pagos_por_metodo = df_completo.groupby("payment_type").agg(
-        monto_total_usd=("payment_value", "sum"),
+        monto_total_brl=("payment_value", "sum"),
         monto_total_clp=("payment_value_clp", "sum"),
         cantidad_usos=("order_id", "count")
     ).reset_index()
@@ -91,7 +91,7 @@ def responder_preguntas_negocio(resumen_ejecutivo: pd.DataFrame, df_completo: pd
     print("                  📊 REPORTES ANALÍTICOS GLOBALES (OLIST PIPELINE)                  ")
     print("="*105)
     
-    # REPORTE 1: Resumen de los 27 Estados con Nombres Reales
+    # REPORTE 1: Resumen de los 27 Estados con Nombres Reales (CORREGIDO: USD -> BRL)
     print("\n📈 TABLA 1: RESUMEN EJECUTIVO DE VENTAS POR ESTADO (Muestra Completa)")
     print("-" * 105)
     
@@ -99,17 +99,17 @@ def responder_preguntas_negocio(resumen_ejecutivo: pd.DataFrame, df_completo: pd
     reporte_ordenado["customer_state"] = reporte_ordenado["customer_state"].map(MAPEO_ESTADOS).fillna(reporte_ordenado["customer_state"])
     
     with pd.option_context('display.max_rows', None, 'display.float_format', '{:,.2f}'.format):
-        print(reporte_ordenado.to_string(index=False, columns=["customer_state", "transacciones", "total_ingresos_usd", "total_ingresos_clp"],
-                                         header=["Estado", "Transacciones", "Total Ventas (USD)", "Total Ventas (CLP)"]))
+        print(reporte_ordenado.to_string(index=False, columns=["customer_state", "transacciones", "total_ingresos_brl", "total_ingresos_clp"],
+                                         header=["Estado", "Transacciones", "Total Ventas (BRL)", "Total Ventas (CLP)"]))
     print("-" * 105)
     
-    # REPORTE 2: Métodos de Pago (CORREGIDO: "Usos" pasa a ser "Transacciones")
+    # REPORTE 2: Métodos de Pago (CORREGIDO: USD -> BRL)
     print("\n💳 TABLA 2: RENDIMIENTO FINANCIERO POR MÉTODO DE PAGO")
     print("-" * 105)
-    print(f"{'Método de Pago':<16} | {'Transacciones':<13} | {'Total Ventas (USD)':<22} | {'Total Ventas (CLP)':<22}")
+    print(f"{'Método de Pago':<16} | {'Transacciones':<13} | {'Total Ventas (BRL)':<22} | {'Total Ventas (CLP)':<22}")
     print("-" * 105)
     for _, fila in pagos_por_metodo.iterrows():
-        print(f" ➔ {fila['payment_type']:<13} | {int(fila['cantidad_usos']):<13,} | ${fila['monto_total_usd']:<21,.2f} | ${fila['monto_total_clp']:<21,.0f}")
+        print(f" ➔ {fila['payment_type']:<13} | {int(fila['cantidad_usos']):<13,} | ${fila['monto_total_brl']:<21,.2f} | ${fila['monto_total_clp']:<21,.0f}")
     print("-" * 105)
     
     # REPORTE 3: Ingresos Cruzados
@@ -132,19 +132,19 @@ def responder_preguntas_negocio(resumen_ejecutivo: pd.DataFrame, df_completo: pd
     print("                    💡 HALLAZGOS Y RESPUESTAS CLAVE DE NEGOCIO                    ")
     print("="*105)
     
-    # Hallazgo 1 (Asociado a Tabla 1)
+    # Hallazgo 1 (Asociado a Tabla 1 - CORREGIDO: USD -> BRL)
     top_fila = resumen_ejecutivo.sort_values(by="total_ingresos_clp", ascending=False).iloc[0]
     nombre_completo_top = MAPEO_ESTADOS.get(top_fila['customer_state'], top_fila['customer_state'])
     print(f"1️⃣ LIDERAZGO COMERCIAL GEOGRÁFICO (Asociado a Tabla 1):")
     print(f"    El estado de '{nombre_completo_top}' es el núcleo de Olist, acumulando el mayor volumen")
-    print(f"    de ingresos del pipeline con ${top_fila['total_ingresos_usd']:,.2f} USD (${top_fila['total_ingresos_clp']:,.0f} CLP).")
+    print(f"    de ingresos del pipeline con ${top_fila['total_ingresos_brl']:,.2f} BRL (${top_fila['total_ingresos_clp']:,.0f} CLP).")
     print("-" * 105)
     
-    # Hallazgo 2 (Asociado a Tabla 2 - Perfectamente alineado con "Transacciones")
+    # Hallazgo 2 (Asociado a Tabla 2 - CORREGIDO: USD -> BRL)
     metodo_top = pagos_por_metodo.sort_values(by="monto_total_clp", ascending=False).iloc[0]
     print(f"2️⃣ HEGEMONÍA EN LOS MÉTODOS DE PAGO (Asociado a Tabla 2):")
     print(f"    La modalidad de '{metodo_top['payment_type']}' domina la plataforma con un total recaudado de")
-    print(f"    ${metodo_top['monto_total_usd']:,.2f} USD, lo que representa {int(metodo_top['cantidad_usos']):,} transacciones exitosas.")
+    print(f"    ${metodo_top['monto_total_brl']:,.2f} BRL, lo que representa {int(metodo_top['cantidad_usos']):,} transacciones exitosas.")
     print("-" * 105)
     
     # Hallazgo 3 (Asociado a Tabla 3)
